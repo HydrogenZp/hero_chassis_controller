@@ -1,0 +1,9 @@
+<launch>
+    <include file="$(find rm_description)/launch/hero.launch">
+        <arg name="load_chassis" value="true"/>
+        <arg name="roller_type" value="realistic"/>
+        <arg name="paused" value="true"/>
+    </include>
+
+
+</launch>
