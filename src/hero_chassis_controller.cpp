@@ -4,11 +4,13 @@
 #include <ros/ros.h>
 #include <geometry_msgs/Twist.h>
 #include <pluginlib/class_list_macros.h>
+#include <sensor_msgs/JointState.h>
+#include <ros/param.h>
 
-float wheel_track = 0.4;
-float wheel_base = 0.4;
-float rx = wheel_track / 2;
-float ry = wheel_base / 2;
+double wheel_track = 0.4;
+double wheel_base = 0.4;
+double rx = wheel_track / 2;
+double ry = wheel_base / 2;
 
 namespace hero_chassis_controller
 {
@@ -18,6 +20,11 @@ public:
   HeroChassisController() = default;
   ~HeroChassisController() override = default;
 
+  double p_left_front, i_left_front, d_left_front;
+  double p_right_front, i_right_front, d_right_front;
+  double p_left_back, i_left_back, d_left_back;
+  double p_right_back, i_right_back, d_right_back;
+
   bool init(hardware_interface::EffortJointInterface* effort_joint_interface, ros::NodeHandle& root_nh,
             ros::NodeHandle& controller_nh) override
   {
@@ -26,14 +33,31 @@ public:
     left_back_joint_ = effort_joint_interface->getHandle("left_back_wheel_joint");
     right_back_joint_ = effort_joint_interface->getHandle("right_back_wheel_joint");
 
-    // Load PID parameters from the parameter server
-    left_front_pid_.setGains(1.0, 0.0, 0.0, 1.0, -1.0);
-    right_front_pid_.setGains(1.0, 0.0, 0.0, 1.0, -1.0);
-    left_back_pid_.setGains(1.0, 0.0, 0.0, 1.0, -1.0);
-    right_back_pid_.setGains(1.0, 0.0, 0.0, 1.0, -1.0);
+    // 使用param::get方法获取参数
+    if (!controller_nh.getParam("p_left_front", p_left_front) ||
+        !controller_nh.getParam("i_left_front", i_left_front) ||
+        !controller_nh.getParam("d_left_front", d_left_front) || !controller_nh.getParam("p_left_back", p_left_back) ||
+        !controller_nh.getParam("i_left_back", i_left_back) || !controller_nh.getParam("d_left_back", d_left_back) ||
+        !controller_nh.getParam("p_right_front", p_right_front) ||
+        !controller_nh.getParam("i_right_front", i_right_front) ||
+        !controller_nh.getParam("d_right_front", d_right_front) ||
+        !controller_nh.getParam("p_right_back", p_right_back) ||
+        !controller_nh.getParam("i_right_back", i_right_back) || !controller_nh.getParam("d_right_back", d_right_back))
+    {
+      ROS_ERROR("Failed to get PID parameters from parameter server.");
+      return false;
+    }
 
-    // Subscribe to the cmd_vel topic to get the desired velocities
+    // Load PID parameters from the parameter server
+    left_front_pid_.setGains(p_left_front, i_left_front, d_left_front, 1.0, -1.0);
+    right_front_pid_.setGains(p_right_front, i_right_front, d_right_front, 1.0, -1.0);
+    left_back_pid_.setGains(p_left_back, i_left_back, d_left_back, 1.0, -1.0);
+    right_back_pid_.setGains(p_right_back, i_right_back, d_right_back, 1.0, -1.0);
+
+    // 订阅cmd_vel话题获取目标速度
     cmd_vel_subscriber_ = root_nh.subscribe("cmd_vel", 1, &HeroChassisController::cmdVelCallback, this);
+    // 订阅关节状态
+    joint_state_subscriber_ = root_nh.subscribe("joint_states", 10, &HeroChassisController::jointStateCallback, this);
 
     return true;
   }
@@ -66,10 +90,14 @@ private:
     desired_left_back_velocity_ = cmd_vel.linear.x + cmd_vel.linear.y - (rx + ry) * cmd_vel.angular.z;
     desired_right_back_velocity_ = cmd_vel.linear.x - cmd_vel.linear.y + (rx + ry) * cmd_vel.angular.z;
   }
+  void jointStateCallback(const sensor_msgs::JointState::ConstPtr& msg)
+  {
+  }
 
   hardware_interface::JointHandle left_front_joint_, right_front_joint_, left_back_joint_, right_back_joint_;
   control_toolbox::Pid left_front_pid_, right_front_pid_, left_back_pid_, right_back_pid_;
   ros::Subscriber cmd_vel_subscriber_;
+  ros::Subscriber joint_state_subscriber_;
 
   double desired_left_front_velocity_{ 0.0 };
   double desired_right_front_velocity_{ 0.0 };

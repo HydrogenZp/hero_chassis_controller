@@ -6,6 +6,8 @@
     </include>
 
     <rosparam file="$(find hero_chassis_controller)/config/hero_chassis_controller.yaml" command="load"/>
+    <rosparam file="$(find hero_chassis_controller)/config/PID_params.yaml" command="load"/>
+
     <!-- load the controllers -->
     <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false"
           output="screen" args="

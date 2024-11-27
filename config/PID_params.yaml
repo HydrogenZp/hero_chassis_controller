@@ -1,0 +1,16 @@
+HeroChassisController:
+  p_left_front: 1.0
+  i_left_front: 0.0
+  d_left_front: 0.0
+  
+  p_right_front: 1.0
+  i_right_front: 0.0
+  d_right_front: 0.0
+
+  p_left_back: 1.0
+  i_left_back: 0.0
+  d_left_back: 0.0
+
+  p_right_back: 1.0
+  i_right_back: 0.0
+  d_right_back: 0.0
