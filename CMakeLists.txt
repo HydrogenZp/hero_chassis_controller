@@ -58,7 +58,7 @@ include_directories(
 
 ## Declare cpp executables
 add_library(${PROJECT_NAME}
-    src/${PROJECT_NAME}_node.cpp
+    src/${PROJECT_NAME}.cpp
 )
 
 add_dependencies(${PROJECT_NAME}

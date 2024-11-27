@@ -14,15 +14,15 @@ int main(int argc, char** argv)
 
   std::srand(std::time(0));
 
-  ros::Rate rate(1); // 1 Hz
+  ros::Rate rate(0.4);  //  Update at 0.4 Hz
 
   while (ros::ok())
   {
     geometry_msgs::Twist msg;
-    msg.linear.x = (std::rand() % 200 - 100) / 100.0;  // Random linear velocity between -1 and 1
-    msg.linear.y = (std::rand() % 200 - 100) / 100.0;  // Random linear velocity between -1 and 1
+    msg.linear.x = (std::rand() % 200 - 100) / 10;  // Random linear velocity between -1 and 1
+    msg.linear.y = (std::rand() % 200 - 100) / 10;  // Random linear velocity between -1 and 1
     msg.linear.z = 0.0;
-    msg.angular.z = (std::rand() % 200 - 100) / 100.0; // Random angular velocity between -1 and 1
+    msg.angular.z = (std::rand() % 200 - 100) / 5;  // Random angular velocity between -1 and 1
 
     cmd_vel_pub.publish(msg);
 
