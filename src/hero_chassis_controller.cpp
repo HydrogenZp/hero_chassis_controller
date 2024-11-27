@@ -1,11 +1,12 @@
+#include "hero_chassis_controller/PIDConfig.h"
 #include <control_toolbox/pid.h>
 #include <controller_interface/controller.h>
-#include <hardware_interface/joint_command_interface.h>
-#include <ros/ros.h>
+#include <dynamic_reconfigure/server.h>
 #include <geometry_msgs/Twist.h>
+#include <hardware_interface/joint_command_interface.h>
 #include <pluginlib/class_list_macros.h>
+#include <ros/ros.h>
 #include <sensor_msgs/JointState.h>
-#include <ros/param.h>
 
 double wheel_track = 0.4;
 double wheel_base = 0.4;
@@ -20,33 +21,34 @@ public:
   HeroChassisController() = default;
   ~HeroChassisController() override = default;
 
-  double p_left_front, i_left_front, d_left_front;
-  double p_right_front, i_right_front, d_right_front;
-  double p_left_back, i_left_back, d_left_back;
-  double p_right_back, i_right_back, d_right_back;
+  std::shared_ptr<dynamic_reconfigure::Server<PIDConfig>> config_server_;
+
+  void reconfigureCallback(PIDConfig& config, uint32_t level)
+  {
+    p_left_front = config.p_left_front;
+    i_left_front = config.i_left_front;
+    d_left_front = config.d_left_front;
+    p_right_front = config.p_right_front;
+    i_right_front = config.i_right_front;
+    d_right_front = config.d_right_front;
+    p_left_back = config.p_left_back;
+    i_left_back = config.i_left_back;
+    d_left_back = config.d_left_back;
+    p_right_back = config.p_right_back;
+    i_right_back = config.i_right_back;
+    d_right_back = config.d_right_back;
+  }
 
   bool init(hardware_interface::EffortJointInterface* effort_joint_interface, ros::NodeHandle& root_nh,
             ros::NodeHandle& controller_nh) override
   {
+    config_server_ = std::make_shared<dynamic_reconfigure::Server<PIDConfig>>(controller_nh);
+    config_server_->setCallback(boost::bind(&HeroChassisController::reconfigureCallback, this, _1, _2));
+
     left_front_joint_ = effort_joint_interface->getHandle("left_front_wheel_joint");
     right_front_joint_ = effort_joint_interface->getHandle("right_front_wheel_joint");
     left_back_joint_ = effort_joint_interface->getHandle("left_back_wheel_joint");
     right_back_joint_ = effort_joint_interface->getHandle("right_back_wheel_joint");
-
-    // 使用param::get方法获取参数
-    if (!controller_nh.getParam("p_left_front", p_left_front) ||
-        !controller_nh.getParam("i_left_front", i_left_front) ||
-        !controller_nh.getParam("d_left_front", d_left_front) || !controller_nh.getParam("p_left_back", p_left_back) ||
-        !controller_nh.getParam("i_left_back", i_left_back) || !controller_nh.getParam("d_left_back", d_left_back) ||
-        !controller_nh.getParam("p_right_front", p_right_front) ||
-        !controller_nh.getParam("i_right_front", i_right_front) ||
-        !controller_nh.getParam("d_right_front", d_right_front) ||
-        !controller_nh.getParam("p_right_back", p_right_back) ||
-        !controller_nh.getParam("i_right_back", i_right_back) || !controller_nh.getParam("d_right_back", d_right_back))
-    {
-      ROS_ERROR("Failed to get PID parameters from parameter server.");
-      return false;
-    }
 
     // Load PID parameters from the parameter server
     left_front_pid_.setGains(p_left_front, i_left_front, d_left_front, 1.0, -1.0);
@@ -64,7 +66,7 @@ public:
 
   void update(const ros::Time& time, const ros::Duration& period) override
   {
-    // Compute control effort for each wheel
+    // 为每个轮子计算误差
     double left_front_effort =
         left_front_pid_.computeCommand(desired_left_front_velocity_ - left_front_joint_.getVelocity(), period);
     double right_front_effort =
@@ -93,6 +95,11 @@ private:
   void jointStateCallback(const sensor_msgs::JointState::ConstPtr& msg)
   {
   }
+
+  double p_left_front{1.0}, i_left_front{0.0}, d_left_front{0.0};
+  double p_right_front{1.0}, i_right_front{0.0}, d_right_front{0.0};
+  double p_left_back{1.0}, i_left_back{0.0}, d_left_back{0.0};
+  double p_right_back{1.0}, i_right_back{0.0}, d_right_back{0.0};
 
   hardware_interface::JointHandle left_front_joint_, right_front_joint_, left_back_joint_, right_back_joint_;
   control_toolbox::Pid left_front_pid_, right_front_pid_, left_back_pid_, right_back_pid_;
