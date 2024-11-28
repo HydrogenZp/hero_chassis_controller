@@ -5,3 +5,4 @@ controller:
   joint_state_controller:
     type: joint_state_controller/JointStateController
     publish_rate: 50
+    #关于轴距、轮距、轮径的配置参数写在PID.cfg中了，可以方便地动态修改以适配不同的底盘

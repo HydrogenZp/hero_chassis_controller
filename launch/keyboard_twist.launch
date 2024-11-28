@@ -6,7 +6,6 @@
     </include>
 
     <rosparam file="$(find hero_chassis_controller)/config/hero_chassis_controller.yaml" command="load"/>
-    <rosparam file="$(find hero_chassis_controller)/config/PID_params.yaml" command="load"/>
 
     <!-- load the controllers -->
     <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false"
@@ -14,6 +13,5 @@
         controller/hero_chassis_controller
         controller/joint_state_controller
   "/>
-    <node pkg="hero_chassis_controller" type="random_move_node" name="random_move_node"/>
-
+    <node pkg="teleop_twist_keyboard" type="teleop_twist_keyboard.py" name="teleop_twist_keyboard" output="screen"/>
 </launch>

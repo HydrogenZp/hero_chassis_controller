@@ -22,7 +22,7 @@ int main(int argc, char** argv)
     msg.linear.x = (std::rand() % 200 - 100) / 10;  // Random linear velocity between -1 and 1
     msg.linear.y = (std::rand() % 200 - 100) / 10;  // Random linear velocity between -1 and 1
     msg.linear.z = 0.0;
-    msg.angular.z = (std::rand() % 200 - 100) / 5;  // Random angular velocity between -1 and 1
+    msg.angular.z = (std::rand() % 200 - 100) / 10;  // Random angular velocity between -1 and 1
 
     cmd_vel_pub.publish(msg);
 
