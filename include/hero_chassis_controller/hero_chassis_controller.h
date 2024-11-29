@@ -1,32 +1,50 @@
-//
-// Created by hyd on 24-11-22.
-//
-//这个头文件没用上
 #ifndef HERO_CHASSIS_CONTROLLER_H
 #define HERO_CHASSIS_CONTROLLER_H
 
+#include <hero_chassis_controller/PIDConfig.h>
+#include <control_toolbox/pid.h>
 #include <controller_interface/controller.h>
+#include <dynamic_reconfigure/server.h>
+#include <geometry_msgs/Twist.h>
 #include <hardware_interface/joint_command_interface.h>
+#include <ros/ros.h>
 
 namespace hero_chassis_controller
 {
-
 class HeroChassisController : public controller_interface::Controller<hardware_interface::EffortJointInterface>
 {
 public:
-  HeroChassisController() = default;
-  ~HeroChassisController() override = default;
+  HeroChassisController();
+  ~HeroChassisController() override;
 
   bool init(hardware_interface::EffortJointInterface* effort_joint_interface, ros::NodeHandle& root_nh,
             ros::NodeHandle& controller_nh) override;
-
   void update(const ros::Time& time, const ros::Duration& period) override;
 
-  hardware_interface::JointHandle front_left_joint_, front_right_joint_, back_left_joint_, back_right_joint_;
-
 private:
-  int state_{};
-  ros::Time last_change_;
+  void reconfigureCallback(PIDConfig& config, uint32_t level);
+  void cmdVelCallback(const geometry_msgs::Twist& cmd_vel);
+
+  std::shared_ptr<dynamic_reconfigure::Server<PIDConfig>> config_server_;
+
+  double wheel_track{}, wheel_base{}, wheel_radius{};
+  double rx{}, ry{};
+  double vx_real{}, vy_real{}, omega_real{};
+
+  double p_left_front, i_left_front, d_left_front;
+  double p_right_front, i_right_front, d_right_front;
+  double p_left_back, i_left_back, d_left_back;
+  double p_right_back, i_right_back, d_right_back;
+
+  hardware_interface::JointHandle left_front_joint_, right_front_joint_, left_back_joint_, right_back_joint_;
+  control_toolbox::Pid left_front_pid_, right_front_pid_, left_back_pid_, right_back_pid_;
+  ros::Subscriber cmd_vel_subscriber_;
+  ros::Subscriber joint_state_subscriber_;
+
+  double desired_left_front_velocity_;
+  double desired_right_front_velocity_;
+  double desired_left_back_velocity_;
+  double desired_right_back_velocity_;
 };
 }  // namespace hero_chassis_controller
 
