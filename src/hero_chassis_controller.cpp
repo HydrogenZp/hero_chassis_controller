@@ -7,6 +7,7 @@
 #include <pluginlib/class_list_macros.h>
 #include <ros/ros.h>
 #include <sensor_msgs/JointState.h>
+#include <ros/param.h>
 
 namespace hero_chassis_controller
 {
@@ -31,10 +32,6 @@ public:
     p_right_back = config.p_right_back;
     i_right_back = config.i_right_back;
     d_right_back = config.d_right_back;
-
-    wheel_base = config.wheel_base;
-    wheel_track = config.wheel_track;
-    wheel_radius = config.wheel_radius;
   }
 
   bool init(hardware_interface::EffortJointInterface* effort_joint_interface, ros::NodeHandle& root_nh,
@@ -47,6 +44,10 @@ public:
     right_front_joint_ = effort_joint_interface->getHandle("right_front_wheel_joint");
     left_back_joint_ = effort_joint_interface->getHandle("left_back_wheel_joint");
     right_back_joint_ = effort_joint_interface->getHandle("right_back_wheel_joint");
+
+    ros::param::get("/wheel_track", wheel_track);
+    ros::param::get("/wheel_base", wheel_base);
+    ros::param::get("/wheel_radius", wheel_radius);
 
     rx = wheel_track / 2;
     ry = wheel_base / 2;
@@ -85,7 +86,7 @@ public:
     double right_back_effort = right_back_pid_.computeCommand(
         desired_right_back_velocity_ - wheel_radius * right_back_joint_.getVelocity(), period);
 
-    // 设置关节力矩
+    // 设置关节力矩，由于力矩和速度成线性关系，可将误差作为力矩直接输出
     left_front_joint_.setCommand(left_front_effort);
     right_front_joint_.setCommand(right_front_effort);
     left_back_joint_.setCommand(left_back_effort);
