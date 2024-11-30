@@ -6,6 +6,7 @@
 #include <controller_interface/controller.h>
 #include <dynamic_reconfigure/server.h>
 #include <geometry_msgs/Twist.h>
+#include <nav_msgs/Odometry.h>
 #include <hardware_interface/joint_command_interface.h>
 #include <ros/ros.h>
 
@@ -39,12 +40,13 @@ private:
   hardware_interface::JointHandle left_front_joint_, right_front_joint_, left_back_joint_, right_back_joint_;
   control_toolbox::Pid left_front_pid_, right_front_pid_, left_back_pid_, right_back_pid_;
   ros::Subscriber cmd_vel_subscriber_;
-  ros::Subscriber joint_state_subscriber_;
 
   double desired_left_front_velocity_;
   double desired_right_front_velocity_;
   double desired_left_back_velocity_;
   double desired_right_back_velocity_;
+
+  ros::Publisher real_speed_publisher_;
 };
 }  // namespace hero_chassis_controller
 

@@ -1,6 +1,3 @@
-//
-// Created by hyd on 24-11-24.
-//
 #include <ros/ros.h>
 #include <geometry_msgs/Twist.h>
 #include <cstdlib>
@@ -19,13 +16,14 @@ int main(int argc, char** argv)
   while (ros::ok())
   {
     geometry_msgs::Twist msg;
-    msg.linear.x = (std::rand() % 200 - 100) / 40;  // Random linear velocities
-    msg.linear.y = (std::rand() % 200 - 100) / 40;  // Random linear velocities
+    msg.linear.x = static_cast<double>((std::rand() % 200 - 100)) / 40;  // Random linear velocities
+    msg.linear.y = static_cast<double>((std::rand() % 200 - 100)) / 40;  // Random linear velocities
     msg.linear.z = 0.0;
-    msg.angular.z = (std::rand() % 200 - 100) / 30;
+    msg.angular.z = static_cast<double>((std::rand() % 200 - 100)) / 50;
 
     cmd_vel_pub.publish(msg);
 
+    ros::spinOnce();
     rate.sleep();
   }
 

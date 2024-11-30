@@ -1,6 +1,10 @@
 #include "hero_chassis_controller/hero_chassis_controller.h"
 #include <pluginlib/class_list_macros.h>
+#include <tf/transform_broadcaster.h>
 #include <ros/param.h>
+#include <nav_msgs/Odometry.h>
+#include <geometry_msgs/Quaternion.h>
+#include <tf/transform_datatypes.h>
 
 namespace hero_chassis_controller
 {
@@ -47,6 +51,18 @@ bool HeroChassisController::init(hardware_interface::EffortJointInterface* effor
   ROS_INFO("wheel_radius: %f", wheel_radius);
   ROS_INFO("rx: %f", rx);
   ROS_INFO("ry: %f", ry);
+  ROS_INFO("P_left_front: %f", p_left_front);
+  ROS_INFO("I_left_front: %f", i_left_front);
+  ROS_INFO("D_left_front: %f", d_left_front);
+  ROS_INFO("P_right_front: %f", p_right_front);
+  ROS_INFO("I_right_front: %f", i_right_front);
+  ROS_INFO("D_right_front: %f", d_right_front);
+  ROS_INFO("P_left_back: %f", p_left_back);
+  ROS_INFO("I_left_back: %f", i_left_back);
+  ROS_INFO("D_left_back: %f", d_left_back);
+  ROS_INFO("P_right_back: %f", p_right_back);
+  ROS_INFO("I_right_back: %f", i_right_back);
+  ROS_INFO("D_right_back: %f", d_right_back);
 
   // 加载PID参数
   left_front_pid_.setGains(p_left_front, i_left_front, d_left_front, 1.0, -1.0);
@@ -57,6 +73,8 @@ bool HeroChassisController::init(hardware_interface::EffortJointInterface* effor
   // 订阅cmd_vel话题获取目标速度
   cmd_vel_subscriber_ = root_nh.subscribe("cmd_vel", 1, &HeroChassisController::cmdVelCallback, this);
 
+  real_speed_publisher_ = root_nh.advertise<nav_msgs::Odometry>("/odom", 10);
+
   return true;
 }
 
@@ -65,6 +83,9 @@ void HeroChassisController::update(const ros::Time& time, const ros::Duration& p
   // 为每个轮子计算误差
   // 角速度直接从hardware_interface::JointHandle获取，线速度需乘轮子半径
   //.getVelocity获取的是角速度，计算误差时需要转换成线速度，故需乘轮子半径
+
+  double kErrorAmplification = 2;  // 误差放大系数
+
   double left_front_effort = left_front_pid_.computeCommand(
       desired_left_front_velocity_ - wheel_radius * left_front_joint_.getVelocity(), period);
   double right_front_effort = right_front_pid_.computeCommand(
@@ -74,10 +95,17 @@ void HeroChassisController::update(const ros::Time& time, const ros::Duration& p
   double right_back_effort = right_back_pid_.computeCommand(
       desired_right_back_velocity_ - wheel_radius * right_back_joint_.getVelocity(), period);
 
-  // 设置关节力矩，由于力矩和速度成线性关系，可将误差作为力矩直接输出
-  left_front_joint_.setCommand(left_front_effort);
+  // 根据车辆动力学模型，轮子速度不大的情况下，轮子的速度和力矩成正比，比例系数对最终速度没有影响，但是会影响速度的收敛速度
+  // 这里的比例系数等效于pid的p系数
+  // 为了体现这个动力学关系（速度与力矩），这里设置了一个误差放大系数，而不是直接使用pid的p系数
+  left_back_effort = kErrorAmplification * left_back_effort;
+  right_back_effort = kErrorAmplification * right_back_effort;
+  left_front_effort = kErrorAmplification * left_front_effort;
+  right_front_effort = kErrorAmplification * right_front_effort;
+
+  left_front_joint_.setCommand(left_back_effort);
   right_front_joint_.setCommand(right_front_effort);
-  left_back_joint_.setCommand(left_back_effort);
+  left_back_joint_.setCommand(left_front_effort);
   right_back_joint_.setCommand(right_back_effort);
 
   // 正运动学解算，计算实际速度
@@ -94,6 +122,30 @@ void HeroChassisController::update(const ros::Time& time, const ros::Duration& p
                (-left_front_joint_.getVelocity() + right_front_joint_.getVelocity() - left_back_joint_.getVelocity() +
                 right_back_joint_.getVelocity()) /
                (4 * (rx + ry));
+  //下面的代码没写好先不用
+  /*nav_msgs::Odometry odom;
+  odom.header.stamp = time;
+  odom.header.frame_id = "odom";
+  odom.child_frame_id = "base_link";
+
+  odom.pose.pose.position.x = 0;
+  odom.pose.pose.position.y = 0;
+  odom.pose.pose.position.z = 0;
+  odom.pose.pose.orientation = tf::createQuaternionMsgFromYaw(0);
+
+  odom.twist.twist.linear.x = vx_real;
+  odom.twist.twist.linear.y = vy_real;
+  odom.twist.twist.angular.z = omega_real;
+
+  real_speed_publisher_.publish(odom);
+
+  static tf::TransformBroadcaster br;
+  tf::Transform transform;
+  transform.setOrigin(tf::Vector3(0.0, 0.0, 0.0));
+  tf::Quaternion q;
+  q.setRPY(0, 0, 0);
+  transform.setRotation(q);
+  br.sendTransform(tf::StampedTransform(transform, time, "odom", "base_link"));*/
 }
 
 void HeroChassisController::cmdVelCallback(const geometry_msgs::Twist& cmd_vel)

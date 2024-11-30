@@ -7,6 +7,6 @@ controller:
     publish_rate: 50
 
 wheel_track: 0.4
-wheal_base: 0.4
-heel_radius: 0.07625
+wheel_base: 0.4
+wheel_radius: 0.0765
 #这些参数从URDF中获取
