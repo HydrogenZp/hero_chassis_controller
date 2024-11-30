@@ -96,8 +96,8 @@ void HeroChassisController::update(const ros::Time& time, const ros::Duration& p
       desired_right_back_velocity_ - wheel_radius * right_back_joint_.getVelocity(), period);
 
   // 根据车辆动力学模型，轮子速度不大的情况下，轮子的速度和力矩成正比，比例系数对最终速度没有影响，但是会影响速度的收敛速度
-  // 这里的比例系数等效于pid的p系数
-  // 为了体现这个动力学关系（速度与力矩），这里设置了一个误差放大系数，而不是直接使用pid的p系数
+  // 为了体现这个动力学关系（速度与力矩）和防止过冲，这里设置了一个误差放大系数，而不是直接使用pid的p参数
+  // 由于误差放大系数是一个常数，所以不会影响最终的稳态误差，并且可以通过调整这个系数来调整速度的收敛速度
   left_back_effort = kErrorAmplification * left_back_effort;
   right_back_effort = kErrorAmplification * right_back_effort;
   left_front_effort = kErrorAmplification * left_front_effort;
@@ -122,7 +122,7 @@ void HeroChassisController::update(const ros::Time& time, const ros::Duration& p
                (-left_front_joint_.getVelocity() + right_front_joint_.getVelocity() - left_back_joint_.getVelocity() +
                 right_back_joint_.getVelocity()) /
                (4 * (rx + ry));
-  //下面的代码没写好先不用
+  // 下面的代码没写好先不用
   /*nav_msgs::Odometry odom;
   odom.header.stamp = time;
   odom.header.frame_id = "odom";
