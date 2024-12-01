@@ -6,9 +6,9 @@
 #include <controller_interface/controller.h>
 #include <dynamic_reconfigure/server.h>
 #include <geometry_msgs/Twist.h>
-#include <nav_msgs/Odometry.h>
 #include <hardware_interface/joint_command_interface.h>
 #include <ros/ros.h>
+#include <nav_msgs/Odometry.h>
 
 namespace hero_chassis_controller
 {
@@ -23,7 +23,7 @@ public:
   void update(const ros::Time& time, const ros::Duration& period) override;
 
 private:
-  void reconfigureCallback(PIDConfig& config, uint32_t level);
+  void reconfigureCallback(const PIDConfig& config, uint32_t level);
   void cmdVelCallback(const geometry_msgs::Twist& cmd_vel);
 
   std::shared_ptr<dynamic_reconfigure::Server<PIDConfig>> config_server_;
@@ -46,7 +46,10 @@ private:
   double desired_left_back_velocity_;
   double desired_right_back_velocity_;
 
+  double x, y, th;
+
   ros::Publisher real_speed_publisher_;
+  nav_msgs::Odometry odom_msg;
 };
 }  // namespace hero_chassis_controller
 

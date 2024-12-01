@@ -8,10 +8,36 @@
 
 namespace hero_chassis_controller
 {
-HeroChassisController::HeroChassisController() = default;
+HeroChassisController::HeroChassisController()
+{
+  // 初始化位置
+  x = 0.0;
+  y = 0.0;
+  th = 0.0;
+
+  // 初始化PID参数
+  p_left_front = 0.0;
+  i_left_front = 0.0;
+  d_left_front = 0.0;
+  p_right_front = 0.0;
+  i_right_front = 0.0;
+  d_right_front = 0.0;
+  p_left_back = 0.0;
+  i_left_back = 0.0;
+  d_left_back = 0.0;
+  p_right_back = 0.0;
+  i_right_back = 0.0;
+  d_right_back = 0.0;
+
+  // 初始化期望速度
+  desired_left_front_velocity_ = 0.0;
+  desired_right_front_velocity_ = 0.0;
+  desired_left_back_velocity_ = 0.0;
+  desired_right_back_velocity_ = 0.0;
+}
 HeroChassisController::~HeroChassisController() = default;
 
-void HeroChassisController::reconfigureCallback(PIDConfig& config, uint32_t level)
+void HeroChassisController::reconfigureCallback(const PIDConfig& config, uint32_t level)
 {
   p_left_front = config.p_left_front;
   i_left_front = config.i_left_front;
@@ -74,7 +100,9 @@ bool HeroChassisController::init(hardware_interface::EffortJointInterface* effor
   cmd_vel_subscriber_ = root_nh.subscribe("cmd_vel", 1, &HeroChassisController::cmdVelCallback, this);
 
   real_speed_publisher_ = root_nh.advertise<nav_msgs::Odometry>("/odom", 10);
-
+  odom_msg.header.frame_id = "odom";
+  odom_msg.child_frame_id = "base_link";
+  odom_msg.pose.pose.position.z = 0.0;
   return true;
 }
 
@@ -122,30 +150,38 @@ void HeroChassisController::update(const ros::Time& time, const ros::Duration& p
                (-left_front_joint_.getVelocity() + right_front_joint_.getVelocity() - left_back_joint_.getVelocity() +
                 right_back_joint_.getVelocity()) /
                (4 * (rx + ry));
-  // 下面的代码没写好先不用
-  /*nav_msgs::Odometry odom;
-  odom.header.stamp = time;
-  odom.header.frame_id = "odom";
-  odom.child_frame_id = "base_link";
 
-  odom.pose.pose.position.x = 0;
-  odom.pose.pose.position.y = 0;
-  odom.pose.pose.position.z = 0;
-  odom.pose.pose.orientation = tf::createQuaternionMsgFromYaw(0);
+  // 通过速度对位置进行积分，计算实际位置
+  // 这里对速度乘了个旋转矩阵，因为速度是机器人坐标系下的速度，需要对速度进行坐标变换
 
-  odom.twist.twist.linear.x = vx_real;
-  odom.twist.twist.linear.y = vy_real;
-  odom.twist.twist.angular.z = omega_real;
+  double dt = period.toSec();
+  double delta_x = (vx_real * cos(th) - vy_real * sin(th)) * dt;
+  double delta_y = (vx_real * sin(th) + vy_real * cos(th)) * dt;
+  double delta_th = omega_real * dt;
 
-  real_speed_publisher_.publish(odom);
+  x += delta_x;
+  y += delta_y;
+  th += delta_th;
 
+  // 发布里程计消息
+  odom_msg.header.stamp = time;
+  odom_msg.pose.pose.position.x = x;
+  odom_msg.pose.pose.position.y = y;
+  odom_msg.pose.pose.orientation = tf::createQuaternionMsgFromYaw(th);
+  odom_msg.twist.twist.linear.x = vx_real;
+  odom_msg.twist.twist.linear.y = vy_real;
+  odom_msg.twist.twist.angular.z = omega_real;
+
+  real_speed_publisher_.publish(odom_msg);
+
+  // 发布tf变换，odom到base_link
   static tf::TransformBroadcaster br;
   tf::Transform transform;
-  transform.setOrigin(tf::Vector3(0.0, 0.0, 0.0));
+  transform.setOrigin(tf::Vector3(x, y, 0.0));
   tf::Quaternion q;
-  q.setRPY(0, 0, 0);
+  q.setRPY(0, 0, th);
   transform.setRotation(q);
-  br.sendTransform(tf::StampedTransform(transform, time, "odom", "base_link"));*/
+  br.sendTransform(tf::StampedTransform(transform, time, "odom", "base_link"));
 }
 
 void HeroChassisController::cmdVelCallback(const geometry_msgs::Twist& cmd_vel)
