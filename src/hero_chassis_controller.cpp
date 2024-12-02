@@ -143,6 +143,7 @@ void HeroChassisController::computeWheelEfforts(const ros::Time& time, const ros
   // 根据车辆动力学模型，轮子速度不大的情况下，轮子的速度和力矩成正比，比例系数对最终速度没有影响，但是会影响速度的收敛速度
   // 为了体现这个动力学关系（速度与力矩）和防止过冲，这里设置了一个误差放大系数，而不是直接使用pid的p参数
   // 由于误差放大系数是一个常数，所以不会影响最终的稳态误差，并且可以通过调整这个系数来调整速度的收敛速度
+  // 我知道这可能对PID参数调试不太友好，但实际运行效果出奇的好。。。
   left_back_effort = kErrorAmplification * left_back_effort;
   right_back_effort = kErrorAmplification * right_back_effort;
   left_front_effort = kErrorAmplification * left_front_effort;

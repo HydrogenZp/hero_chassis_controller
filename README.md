@@ -1,200 +1,196 @@
-# Package Name
 
-## Overview
 
-This is a template: replace, remove, and add where required. Describe here what this package does and what it's meant
-for in a few sentences.
+## 需求及评分细则
 
-**Keywords:** example, package, template
+**总分: 150**
 
-Or, add some keywords to the Bitbucket or GitHub repository.
+### 必做
 
-### License
+**总分: 35**
+如果没有完成必做需求，没有资格参加答辩。
 
-The source code is released under a [BSD 3-Clause license](LICENSE).
+#### 1. 运行 [rm_description](https://github.com/YoujianWu/rm_description_for_task.git) 的英雄机器人模型 （已完成）
 
-**Author: Péter Fankhauser<br />
-Affiliation: [ANYbotics](https://www.anybotics.com/)<br />
-Maintainer: Péter Fankhauser, pfankhauser@anybotics.com**
+**分数: 5**
 
-The PACKAGE NAME package has been tested under [ROS] Indigo, Melodic and Noetic on respectively Ubuntu 14.04, 18.04 and
-20.04. This is research code, expect that it changes often and any fitness for a particular purpose is disclaimed.
+![task1](./doc/task1.png)
 
-[![Build Status](http://rsl-ci.ethz.ch/buildStatus/icon?job=ros_best_practices)](http://rsl-ci.ethz.ch/job/ros_best_practices/)
 
-![Example image](doc/example.jpg)
 
-[comment]: <> (### Publications)
+参考资料：
 
-[comment]: <> (If you use this work in an academic context, please cite the following publication&#40;s&#41;:)
+- [rm_description](https://github.com/YoujianWu/rm_description_for_task.git)
 
-[comment]: <> (* P. Fankhauser, M. Bloesch, C. Gehring, M. Hutter, and R. Siegwart: **PAPER TITLE**. IEEE/RSJ International Conference)
+#### 2. 学习理解并运行 [simple_chassis_controller](https://github.com/YoujianWu/simple_chassis_controller) （已完成）
 
-[comment]: <> (  on Intelligent Robots and Systems &#40;IROS&#41;, 2015. &#40;[PDF]&#40;http://dx.doi.org/10.3929/ethz-a-010173654&#41;&#41;)
+**分数: 10**
 
-[comment]: <> (        @inproceedings{Fankhauser2015,)
+要求：
 
-[comment]: <> (            author = {Fankhauser, P\'{e}ter and Hutter, Marco},)
+1. 全程使用 CLion 进行编译和 DeBug （可在群里寻求帮助）
+2. 如需使用catkin命令行工具，使用 `catkin-tool` 而不是 `catkin_make` (可在群里寻求帮助)
+3. 理解 `SimpleChassisController` 的类成员意义
+4. 理解控制器怎么被加载进模拟器和实际机器人中 (pluginlib)
 
-[comment]: <> (            booktitle = {IEEE/RSJ International Conference on Intelligent Robots and Systems &#40;IROS&#41;},)
+参考资料：
 
-[comment]: <> (            title = {{PAPER TITLE}},)
+- [CLion ROS setup tutorial](https://www.jetbrains.com/help/clion/ros-setup-tutorial.html)
+- [CLion Attach to process](https://www.jetbrains.com/help/clion/attaching-to-local-process.html)
+	调试simple_chassis_controller时, 应该 attach 到 `gzsever`
+- [simple_chassis_controller]
+- [ros_control: A generic and simple control framework for ROS](http://www.theoj.org/joss-papers/joss.00456/10.21105.joss.00456.pdf)
+- [ros_control: wiki](https://github.com/ros-controls/ros_control/wiki)
+- [Gazbeo: Tutorial: ROS Control](http://gazebosim.org/tutorials/?tut=ros_control)
+- [pluginlib](http://wiki.ros.org/pluginlib)
 
-[comment]: <> (            publisher = {IEEE},)
+#### 3. 谈谈你对 ros_control 的理解 （已完成）
 
-[comment]: <> (            year = {2015})
+**分数: 20**
 
-[comment]: <> (        })
+参考资料：
 
-## Installation
+- [ros_control: A generic and simple control framework for ROS](http://www.theoj.org/joss-papers/joss.00456/10.21105.joss.00456.pdf)
+- [ros_control: wiki](https://github.com/ros-controls/ros_control/wiki)
 
-### Installation from Packages
+### 选做
 
-To install all packages from the this repository as Debian packages use
+**总分: 115** 尽量完成更多项
 
-    sudo apt-get install ros-noetic-...
+#### 1. 创建新的 ros_package （已完成）
 
-Or better, use `rosdep`:
+**分数: 10**
 
-	sudo rosdep install --from-paths src
+要求：
 
-### Building from Source
+1. 以 rm_template 为模版 创建新仓库, 名为 hero_chassis_controller
+2. 正确填写 **CMakeList.txt**, **package.xml**, **README.md**, 在完成后面的需求时记更新
 
-#### Dependencies
+参考资料：
 
-- [Robot Operating System (ROS)](http://wiki.ros.org) (middleware for robotics),
-- [Eigen] (linear algebra library)
+- [rm_template](https://github.com/gdut-dynamic-x/rm_template)
+- [catkin/CMakeLists.txt](http://wiki.ros.org/catkin/CMakeLists.txt)
+- [package.xml](http://wiki.ros.org/catkin/package.xml)
 
-  sudo rosdep install --from-paths src
+#### 2. 完善的版本管理 （已完成，详见github仓库commits，待补充材料）
 
-#### Building
+**分数： 10**
 
-To build from source, clone the latest version from this repository into your catkin workspace and compile the package
-using
+要求：
 
-	cd catkin_workspace/src
-	git clone https://github.com/ethz-asl/ros_best_practices.git
-	cd ../
-	rosdep install --from-paths . --ignore-src
-	catkin_make
+1. 合理的commit
+2. 清晰的commit消息
+3. 有和合并冲突的处理
+4. 分工明确（组内贡献度将参考版本管理）
 
-### Running in Docker
+#### 3. 正确的代码规范 （已完成，待补充材料）
 
-Docker is a great way to run an application with all dependencies and libraries bundles together. Make sure
-to [install Docker](https://docs.docker.com/get-docker/) first.
+**分数： 10**
 
-First, spin up a simple container:
+要求：
 
-	docker run -ti --rm --name ros-container ros:noetic bash
+1. 使用 ROS C++ Style Guide 或者 Google C++ Style.
+2. 将本项目的 .clang-format 与 .clang-tidy
+	文件添加到你的项目中，并使用 [Save Actions](https://plugins.jetbrains.com/plugin/7642-save-actions) 来优化代码格式
 
-This downloads the `ros:noetic` image from the Docker Hub, indicates that it requires an interactive terminal (`-t, -i`)
-, gives it a name (`--name`), removes it after you exit the container (`--rm`) and runs a command (`bash`).
+参考资料：
 
-Now, create a catkin workspace, clone the package, build it, done!
+- [ROS C++ Style Guide](http://wiki.ros.org/CppStyleGuide)
+- [Google C++ Style](https://google.github.io/styleguide/cppguide.html)
 
-	apt-get update && apt-get install -y git
-	mkdir -p /ws/src && cd /ws/src
-	git clone https://github.com/leggedrobotics/ros_best_practices.git
-	cd ..
-	rosdep install --from-path src
-	catkin_make
-	source devel/setup.bash
-	roslaunch ros_package_template ros_package_template.launch
+#### 4. 使用 PID 控制轮子的速度（已完成，详见控制器源码，待补充）
 
-### Unit Tests
+**分数： 20**
 
-Run the unit tests with
+要求：
 
-	catkin_make run_tests_ros_package_template
+1. 一个PID对应控制一个轮子（共四个PID）
+2. 使用 control_toolbox 的 PID 控制器
+3. 可在配置文件中设定 PID 的各个参数
+4. 会使用 plotjuggler 和 rqt 的 rqt_reconfigure 调整得到合适的PID参数
+5. 理解 `control_toolbox::Pid` 类 参考资料：
 
-### Static code analysis
+- [control_toolbox](http://wiki.ros.org/control_toolbox)
+- [control_toolbox::Pid Class Reference](http://docs.ros.org/en/jade/api/control_toolbox/html/classcontrol__toolbox_1_1Pid.html)
+- [effort_controllers/joint_velocity_controller.cpp](https://github.com/ros-controls/ros_controllers/blob/noetic-devel/effort_controllers/src/joint_velocity_controller.cpp)
+	展示了如何用 `control_toolbox::Pid` 控制单个关节的速度
+- [plotjuggler](https://www.ros.org/news/2017/01/new-package-plotjuggler.html)
+- [rqt_reconfigure](http://wiki.ros.org/rqt_reconfigure)
 
-Run the static code analysis with
+#### 5. 使用逆运动学计算各个轮子的期望速度（已完成）
 
-	catkin_make roslint_ros_package_template
+**分数： 20**
 
-## Usage
+要求：
 
-Describe the quickest way to run this software, for example:
+1. 底盘坐标系定义参照仿真中的 base_link
+2. 接收 "/cmd_vel" 上的 [geometry_msgs/Twist](http://docs.ros.org/en/jade/api/geometry_msgs/html/msg/Twist.html)
+	数据，将它视为底盘坐标系下的速度指令，计算各个轮子期望的转速
+3. 可在配置文件中设定 底盘的轴距 轮距
 
-Run the main node with
+参考资料：
 
-	roslaunch ros_package_template ros_package_template.launch
+- [geometry_msgs/Twist](http://docs.ros.org/en/jade/api/geometry_msgs/html/msg/Twist.html)
+- [Mecanum wheel](https://en.wikipedia.org/wiki/Mecanum_wheel)
+- [Kinematic Model of a Four Mecanum Wheeled Mobile Robot](https://research.ijcaonline.org/volume113/number3/pxc3901586.pdf)
+	这篇论文真真真水...
 
-## Config files
+#### 6. 使用正运动学实现里程计 （已完成）
 
-Config file folder/set 1
+**分数： 15**
 
-* **config_file_1.yaml** Shortly explain the content of this config file
+要求：
 
-Config file folder/set 2
+1. 根据轮子的实际速度计算底盘的速度，并进行叠加实现里程计
+2. 将数据发以 [nav_msgs/Odometry](http://docs.ros.org/en/noetic/api/nav_msgs/html/msg/Odometry.html) 发布到 topic "/odom" 上
+3. 将数据处理为坐标变换关系： **"odom"** 到 **"base_link"**
 
-* **...**
+参考资料：
 
-## Launch files
+- [nav_msgs/Odometry](http://docs.ros.org/en/noetic/api/nav_msgs/html/msg/Odometry.html)
+- [navigationTutorialsRobotSetupOdom](http://wiki.ros.org/navigation/Tutorials/RobotSetup/Odom)
+- [Kinematic Model of a Four Mecanum Wheeled Mobile Robot](https://research.ijcaonline.org/volume113/number3/pxc3901586.pdf)
 
-* **launch_file_1.launch:** shortly explain what is launched (e.g standard simulation, simulation with gdb,...)
+#### 7. 使用tf计算实现世界坐标下的速度控制（待完成）
 
-  Argument set 1
+**分数： 15**
 
-    - **`argument_1`** Short description (e.g. as commented in launch file). Default: `default_value`.
+要求：
 
-  Argument set 2
+1. 已实现 `5. 使用逆运动学计算各个轮子的期望速度` 和 `6. 使用正运动学实现里程计`
+2. 将 topic "/cmd_vel" 中的速度指令视为世界坐标系下(**"odom"** 或者 **"map"**)， 通过 `tf` 变换到 底盘坐标系后执行。
+3. 可在配置文件中设定 **“底盘坐标系速度模式”** ( 即`5. 使用逆运动学计算各个轮子的期望速度`) 和 **“全局坐标系速度模式”** 两个模式
 
-    - **`...`**
+参考资料：
 
-* **...**
+- [tfOverviewUsing Published Transforms](http://wiki.ros.org/tf/Overview/Using%20Published%20Transforms
+	) 使用 `transformVector`
 
-## Nodes
+#### 8. 其他特色功能 
 
-### ros_package_template
+（部分完成，已实现:
 
-Reads temperature measurements and computed the average.
+1. 使用 teleop_twist_keyboard 键盘操控底盘
 
-#### Subscribed Topics
+2. 编写了一个节点随机发布速度到/cmd_vel，供编写控制器时观察底盘运动
 
-* **`/temperature`** ([sensor_msgs/Temperature])
+	Todo: 功率约束算法）
 
-  The temperature measurements from which the average is computed.
+**分数： 15**
 
-#### Published Topics
+要求：
 
-...
+1. 自由发挥
+2. 如 使用 teleop_twist_keyboard 键盘操控底盘
+3. 如 可在配置文件设定底盘加速度。
+4. 如 可在配置文件设定底盘的运动功率，编写功率约束算法，并保证运动时不超出预期功率。
 
-#### Services
+参考资料：
 
-* **`get_average`** ([std_srvs/Trigger])
+- [teleop_twist_keyboard](http://wiki.ros.org/teleop_twist_keyboard)
+- [power_limit](https://hz-rm-bbs-web-prod.oss-cn-hangzhou.aliyuncs.com/attachment/pre/v1/202309/15/000721u4euqvq7vsijvgpk.attach/%E5%B9%BF%E4%B8%9C%E5%B7%A5%E4%B8%9A%E5%A4%A7%E5%AD%A6%E4%B8%8B%E4%BE%9B%E5%BC%B9%E6%8A%80%E6%9C%AF%E6%96%B9%E6%A1%88.pdf)
 
-  Returns information about the current average. For example, you can trigger the computation from the console with
+[rm_description]: https://github.com/gdut-dynamic-x/rm_description
 
-  	rosservice call /ros_package_template/get_average
+[simple_chassis_controller]: https://github.com/gdut-dynamic-x/simple_chassis_controller
 
-#### Parameters
-
-* **`subscriber_topic`** (string, default: "/temperature")
-
-  The name of the input topic.
-
-* **`cache_size`** (int, default: 200, min: 0, max: 1000)
-
-  The size of the cache.
-
-### NODE_B_NAME
-
-...
-
-## Bugs & Feature Requests
-
-Please report bugs and request features using the [Issue Tracker](https://github.com/gdut-dynamic-x/rm_template/issues)
-.
-
-
-[ROS]: http://www.ros.org
-
-[rviz]: http://wiki.ros.org/rviz
-
-[Eigen]: http://eigen.tuxfamily.org
-
-[std_srvs/Trigger]: http://docs.ros.org/api/std_srvs/html/srv/Trigger.html
-
-[sensor_msgs/Temperature]: http://docs.ros.org/api/sensor_msgs/html/msg/Temperature.html
+[catkin-tool]: https://catkin-tools.readthedocs.io/
