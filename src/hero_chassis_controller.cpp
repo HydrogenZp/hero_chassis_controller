@@ -108,6 +108,23 @@ bool HeroChassisController::init(hardware_interface::EffortJointInterface* effor
 
 void HeroChassisController::update(const ros::Time& time, const ros::Duration& period)
 {
+  computeWheelEfforts(time, period);
+  updateRobotVelocityAndPosition(time, period);
+  publishOdometryAndTF(time);
+}
+
+void HeroChassisController::cmdVelCallback(const geometry_msgs::Twist& cmd_vel)
+{
+  // 逆运动学解算，参考https://www.robotsfan.com/posts/b6e9d4e.html，cmd_vel.angular前系数由轮距和轮距决定
+  // 这里的速度是线速度
+  desired_left_front_velocity_ = cmd_vel.linear.x - cmd_vel.linear.y - (rx + ry) * cmd_vel.angular.z;
+  desired_right_front_velocity_ = cmd_vel.linear.x + cmd_vel.linear.y + (rx + ry) * cmd_vel.angular.z;
+  desired_left_back_velocity_ = cmd_vel.linear.x + cmd_vel.linear.y - (rx + ry) * cmd_vel.angular.z;
+  desired_right_back_velocity_ = cmd_vel.linear.x - cmd_vel.linear.y + (rx + ry) * cmd_vel.angular.z;
+}
+
+void HeroChassisController::computeWheelEfforts(const ros::Time& time, const ros::Duration& period)
+{
   // 为每个轮子计算误差
   // 角速度直接从hardware_interface::JointHandle获取，线速度需乘轮子半径
   //.getVelocity获取的是角速度，计算误差时需要转换成线速度，故需乘轮子半径
@@ -135,7 +152,10 @@ void HeroChassisController::update(const ros::Time& time, const ros::Duration& p
   right_front_joint_.setCommand(right_front_effort);
   left_back_joint_.setCommand(left_front_effort);
   right_back_joint_.setCommand(right_back_effort);
+}
 
+void HeroChassisController::updateRobotVelocityAndPosition(const ros::Time& time, const ros::Duration& period)
+{
   // 正运动学解算，计算实际速度
   // 这里的是线速度
   vx_real = wheel_radius *
@@ -162,7 +182,10 @@ void HeroChassisController::update(const ros::Time& time, const ros::Duration& p
   x += delta_x;
   y += delta_y;
   th += delta_th;
+}
 
+void HeroChassisController::publishOdometryAndTF(const ros::Time& time)
+{
   // 发布里程计消息
   odom_msg.header.stamp = time;
   odom_msg.pose.pose.position.x = x;
@@ -177,22 +200,13 @@ void HeroChassisController::update(const ros::Time& time, const ros::Duration& p
   // 发布tf变换，odom到base_link
   static tf::TransformBroadcaster br;
   tf::Transform transform;
-  transform.setOrigin(tf::Vector3(x, y, 0.0));
+  transform.setOrigin(tf::Vector3(x, y, 0.0));  // 设置平移
   tf::Quaternion q;
-  q.setRPY(0, 0, th);
+  q.setRPY(0, 0, th);  // 设置欧拉角，由于只考虑了平面运动，所以只有一个yaw角
   transform.setRotation(q);
   br.sendTransform(tf::StampedTransform(transform, time, "odom", "base_link"));
 }
 
-void HeroChassisController::cmdVelCallback(const geometry_msgs::Twist& cmd_vel)
-{
-  // 逆运动学解算，参考https://www.robotsfan.com/posts/b6e9d4e.html，cmd_vel.angular前系数由轮距和轮距决定
-  // 这里的速度是线速度
-  desired_left_front_velocity_ = cmd_vel.linear.x - cmd_vel.linear.y - (rx + ry) * cmd_vel.angular.z;
-  desired_right_front_velocity_ = cmd_vel.linear.x + cmd_vel.linear.y + (rx + ry) * cmd_vel.angular.z;
-  desired_left_back_velocity_ = cmd_vel.linear.x + cmd_vel.linear.y - (rx + ry) * cmd_vel.angular.z;
-  desired_right_back_velocity_ = cmd_vel.linear.x - cmd_vel.linear.y + (rx + ry) * cmd_vel.angular.z;
-}
 
 PLUGINLIB_EXPORT_CLASS(hero_chassis_controller::HeroChassisController, controller_interface::ControllerBase)
 }  // namespace hero_chassis_controller

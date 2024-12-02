@@ -25,7 +25,9 @@ public:
 private:
   void reconfigureCallback(const PIDConfig& config, uint32_t level);
   void cmdVelCallback(const geometry_msgs::Twist& cmd_vel);
-
+  void computeWheelEfforts(const ros::Time& time, const ros::Duration& period);
+  void updateRobotVelocityAndPosition(const ros::Time& time, const ros::Duration& period);
+  void publishOdometryAndTF(const ros::Time& time);
   std::shared_ptr<dynamic_reconfigure::Server<PIDConfig>> config_server_;
 
   double wheel_track{}, wheel_base{}, wheel_radius{};
