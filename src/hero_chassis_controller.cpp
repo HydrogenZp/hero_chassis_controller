@@ -125,11 +125,9 @@ void HeroChassisController::cmdVelCallback(const geometry_msgs::Twist& cmd_vel)
 
 void HeroChassisController::computeWheelEfforts(const ros::Time& time, const ros::Duration& period)
 {
-  // 为每个轮子计算误差
+  // 为每个轮子计算力矩
   // 角速度直接从hardware_interface::JointHandle获取，线速度需乘轮子半径
   //.getVelocity获取的是角速度，计算误差时需要转换成线速度，故需乘轮子半径
-
-  double kErrorAmplification = 2;  // 误差放大系数
 
   double left_front_effort = left_front_pid_.computeCommand(
       desired_left_front_velocity_ - wheel_radius * left_front_joint_.getVelocity(), period);
@@ -139,15 +137,6 @@ void HeroChassisController::computeWheelEfforts(const ros::Time& time, const ros
       desired_left_back_velocity_ - wheel_radius * left_back_joint_.getVelocity(), period);
   double right_back_effort = right_back_pid_.computeCommand(
       desired_right_back_velocity_ - wheel_radius * right_back_joint_.getVelocity(), period);
-
-  // 根据车辆动力学模型，轮子速度不大的情况下，轮子的速度和力矩成正比，比例系数对最终速度没有影响，但是会影响速度的收敛速度
-  // 为了体现这个动力学关系（速度与力矩）和防止过冲，这里设置了一个误差放大系数，而不是直接使用pid的p参数
-  // 由于误差放大系数是一个常数，所以不会影响最终的稳态误差，并且可以通过调整这个系数来调整速度的收敛速度
-  // 我知道这可能对PID参数调试不太友好，但实际运行效果出奇的好。。。
-  left_back_effort = kErrorAmplification * left_back_effort;
-  right_back_effort = kErrorAmplification * right_back_effort;
-  left_front_effort = kErrorAmplification * left_front_effort;
-  right_front_effort = kErrorAmplification * right_front_effort;
 
   left_front_joint_.setCommand(left_back_effort);
   right_front_joint_.setCommand(right_front_effort);
