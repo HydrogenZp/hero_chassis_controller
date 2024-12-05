@@ -1,10 +1,10 @@
 #include "hero_chassis_controller/hero_chassis_controller.h"
 #include <pluginlib/class_list_macros.h>
-#include <tf/transform_broadcaster.h>
 #include <ros/param.h>
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/Quaternion.h>
-#include <tf/transform_datatypes.h>
+#include <tf/transform_broadcaster.h>
+#include <tf/tf.h>
 
 namespace hero_chassis_controller
 {
@@ -34,6 +34,8 @@ HeroChassisController::HeroChassisController()
   desired_right_front_velocity_ = 0.0;
   desired_left_back_velocity_ = 0.0;
   desired_right_back_velocity_ = 0.0;
+
+  odomMode = false;
 }
 HeroChassisController::~HeroChassisController() = default;
 
@@ -67,6 +69,7 @@ bool HeroChassisController::init(hardware_interface::EffortJointInterface* effor
   ros::param::get("/wheel_track", wheel_track);
   ros::param::get("/wheel_base", wheel_base);
   ros::param::get("/wheel_radius", wheel_radius);
+  ros::param::get("/odomMode", odomMode);
 
   rx = wheel_track / 2;
   ry = wheel_base / 2;
@@ -115,14 +118,44 @@ void HeroChassisController::update(const ros::Time& time, const ros::Duration& p
 
 void HeroChassisController::cmdVelCallback(const geometry_msgs::Twist& cmd_vel)
 {
-  // 逆运动学解算，参考https://www.robotsfan.com/posts/b6e9d4e.html，cmd_vel.angular前系数由轮距和轮距决定
-  // 这里的速度是线速度
-  desired_left_front_velocity_ = cmd_vel.linear.x - cmd_vel.linear.y - (rx + ry) * cmd_vel.angular.z;
-  desired_right_front_velocity_ = cmd_vel.linear.x + cmd_vel.linear.y + (rx + ry) * cmd_vel.angular.z;
-  desired_left_back_velocity_ = cmd_vel.linear.x + cmd_vel.linear.y - (rx + ry) * cmd_vel.angular.z;
-  desired_right_back_velocity_ = cmd_vel.linear.x - cmd_vel.linear.y + (rx + ry) * cmd_vel.angular.z;
+  geometry_msgs::Vector3Stamped chassis_velocity;
+  chassis_velocity.vector = cmd_vel.linear;
+  chassis_velocity.header.stamp = ros::Time::now();
+  chassis_velocity.header.frame_id = "base_link";
+  geometry_msgs::Twist odom_velocity;
+  geometry_msgs::Vector3Stamped global_velocity;
+  tf::TransformListener listener;
+  if (odomMode)
+  {
+    try
+    {
+      listener.waitForTransform("odom", "base_link", ros::Time(0), ros::Duration(3.0));
+      listener.transformVector("odom", ros::Time(0), chassis_velocity, "base_link", global_velocity);
+      odom_velocity.linear = global_velocity.vector;
+      odom_velocity.angular = cmd_vel.angular;
+    }
+    catch (tf::TransformException& ex)
+    {
+      ROS_INFO("%s", ex.what());
+    }
+    // 逆运动学解算，参考https://www.robotsfan.com/posts/b6e9d4e.html，odom_velocity.angular前系数由轮距和轮距决定
+    // 这里的速度是线速度
+    desired_left_front_velocity_ =
+        odom_velocity.linear.x - odom_velocity.linear.y - (rx + ry) * odom_velocity.angular.z;
+    desired_right_front_velocity_ =
+        odom_velocity.linear.x + odom_velocity.linear.y + (rx + ry) * odom_velocity.angular.z;
+    desired_left_back_velocity_ = odom_velocity.linear.x + odom_velocity.linear.y - (rx + ry) * odom_velocity.angular.z;
+    desired_right_back_velocity_ =
+        odom_velocity.linear.x - odom_velocity.linear.y + (rx + ry) * odom_velocity.angular.z;
+  }
+  else
+  {
+    desired_left_front_velocity_ = cmd_vel.linear.x - cmd_vel.linear.y - (rx + ry) * cmd_vel.angular.z;
+    desired_right_front_velocity_ = cmd_vel.linear.x + cmd_vel.linear.y + (rx + ry) * cmd_vel.angular.z;
+    desired_left_back_velocity_ = cmd_vel.linear.x + cmd_vel.linear.y - (rx + ry) * cmd_vel.angular.z;
+    desired_right_back_velocity_ = cmd_vel.linear.x - cmd_vel.linear.y + (rx + ry) * cmd_vel.angular.z;
+  }
 }
-
 void HeroChassisController::computeWheelEfforts(const ros::Time& time, const ros::Duration& period)
 {
   // 为每个轮子计算力矩
@@ -172,6 +205,7 @@ void HeroChassisController::updateRobotVelocityAndPosition(const ros::Time& time
   x += delta_x;
   y += delta_y;
   th += delta_th;
+  odom_msg.header.stamp = time;
 }
 
 void HeroChassisController::publishOdometryAndTF(const ros::Time& time)

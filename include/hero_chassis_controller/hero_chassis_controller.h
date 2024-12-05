@@ -9,7 +9,7 @@
 #include <hardware_interface/joint_command_interface.h>
 #include <ros/ros.h>
 #include <nav_msgs/Odometry.h>
-
+#include <tf/transform_listener.h>
 namespace hero_chassis_controller
 {
 class HeroChassisController : public controller_interface::Controller<hardware_interface::EffortJointInterface>
@@ -52,6 +52,7 @@ private:
 
   ros::Publisher real_speed_publisher_;
   nav_msgs::Odometry odom_msg;
+  bool odomMode;
 };
 }  // namespace hero_chassis_controller
 

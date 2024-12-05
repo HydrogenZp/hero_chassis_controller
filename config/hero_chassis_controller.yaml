@@ -10,3 +10,5 @@ wheel_track: 0.4
 wheel_base: 0.4
 wheel_radius: 0.0765
 #这些参数从URDF中获取
+odomMode: false
+#设置速度坐标系模式
