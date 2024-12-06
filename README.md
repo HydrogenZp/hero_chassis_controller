@@ -1,196 +1,163 @@
+# DynamicX final assignment
+
+## 完成情况
+
+所有必做与选做项目均已完成（特色功能已有两个，后续根据时间预算考虑添加功率约束算法）
+
+## 功能核心代码片段
+
+由于一些需求不便在文本展示，下面展示一些功能的代码及其思路与解释
+
+### 4. 使用 PID 控制轮子的速度
+
+```cpp
+void HeroChassisController::computeWheelEfforts(const ros::Time& time, const ros::Duration& period)
+{
+  // 为每个轮子计算力矩
+  // 角速度直接从hardware_interface::JointHandle获取，线速度需乘轮子半径
+  //.getVelocity获取的是角速度，计算误差时需要转换成线速度，故需乘轮子半径
+
+  double left_front_effort = left_front_pid_.computeCommand(
+      desired_left_front_velocity_ - wheel_radius * left_front_joint_.getVelocity(), period);
+  double right_front_effort = right_front_pid_.computeCommand(
+      desired_right_front_velocity_ - wheel_radius * right_front_joint_.getVelocity(), period);
+  double left_back_effort = left_back_pid_.computeCommand(
+      desired_left_back_velocity_ - wheel_radius * left_back_joint_.getVelocity(), period);
+  double right_back_effort = right_back_pid_.computeCommand(
+      desired_right_back_velocity_ - wheel_radius * right_back_joint_.getVelocity(), period);
+
+  left_front_joint_.setCommand(left_back_effort);
+  right_front_joint_.setCommand(right_front_effort);
+  left_back_joint_.setCommand(left_front_effort);
+  right_back_joint_.setCommand(right_back_effort);
+}
+```
+
+### 5.使用逆运动学计算各个轮子的期望速度
+
+```cpp
+// 逆运动学解算，参考https://www.robotsfan.com/posts/b6e9d4e.html，odom_velocity.angular前系数由轮距和轮距决定
+// 这里的速度是线速度
+desired_left_front_velocity_ = cmd_vel.linear.x - cmd_vel.linear.y - (rx + ry) * cmd_vel.angular.z;
+    desired_right_front_velocity_ = cmd_vel.linear.x + cmd_vel.linear.y + (rx + ry) * cmd_vel.angular.z;
+    desired_left_back_velocity_ = cmd_vel.linear.x + cmd_vel.linear.y - (rx + ry) * cmd_vel.angular.z;
+    desired_right_back_velocity_ = cmd_vel.linear.x - cmd_vel.linear.y + (rx + ry) * cmd_vel.angular.z;
+```
+
+这个逆运动学解算写在了回调函数当中，并且与速度坐标系变换写在了一起，这里仅展示片段
+
+### 6.使用正运动学实现里程计
+
+```cpp
+void HeroChassisController::updateRobotVelocityAndPosition(const ros::Time& time, const ros::Duration& period)
+{
+  // 正运动学解算，计算实际速度
+  // 这里的是线速度
+  vx_real = wheel_radius *
+            (left_front_joint_.getVelocity() + right_front_joint_.getVelocity() + left_back_joint_.getVelocity() +
+             right_back_joint_.getVelocity()) /
+            4;
+  vy_real = wheel_radius *
+            (-left_front_joint_.getVelocity() + right_front_joint_.getVelocity() + left_back_joint_.getVelocity() -
+             right_back_joint_.getVelocity()) /
+            4;
+  omega_real = wheel_radius *
+               (-left_front_joint_.getVelocity() + right_front_joint_.getVelocity() - left_back_joint_.getVelocity() +
+                right_back_joint_.getVelocity()) /
+               (4 * (rx + ry));
+
+  // 通过速度对位置进行积分，计算实际位置
+  // 这里对速度乘了个旋转矩阵，因为速度是机器人坐标系下的速度，需要对速度进行坐标变换
+
+  double dt = period.toSec();
+  double delta_x = (vx_real * cos(th) - vy_real * sin(th)) * dt;
+  double delta_y = (vx_real * sin(th) + vy_real * cos(th)) * dt;
+  double delta_th = omega_real * dt;
+
+  x += delta_x;
+  y += delta_y;
+  th += delta_th;
+  odom_msg.header.stamp = time;
+}
+
+void HeroChassisController::publishOdometryAndTF(const ros::Time& time)
+{
+  // 发布里程计消息
+  odom_msg.header.stamp = time;
+  odom_msg.pose.pose.position.x = x;
+  odom_msg.pose.pose.position.y = y;
+  odom_msg.pose.pose.orientation = tf::createQuaternionMsgFromYaw(th);
+  odom_msg.twist.twist.linear.x = vx_real;
+  odom_msg.twist.twist.linear.y = vy_real;
+  odom_msg.twist.twist.angular.z = omega_real;
+
+  real_speed_publisher_.publish(odom_msg);
+
+  // 发布tf变换，odom到base_link
+  static tf::TransformBroadcaster br;
+  tf::Transform transform;
+  transform.setOrigin(tf::Vector3(x, y, 0.0));  // 设置平移
+  tf::Quaternion q;
+  q.setRPY(0, 0, th);  // 设置欧拉角，由于只考虑了平面运动，所以只有一个yaw角
+  transform.setRotation(q);
+  br.sendTransform(tf::StampedTransform(transform, time, "odom", "base_link"));
+}
+```
+
+### 7.使用tf计算实现世界坐标下的速度控制
+
+```cpp
+void HeroChassisController::cmdVelCallback(const geometry_msgs::Twist& cmd_vel)
+{
+  geometry_msgs::Vector3Stamped chassis_velocity;
+  chassis_velocity.vector = cmd_vel.linear;
+  chassis_velocity.header.stamp = ros::Time::now();
+  chassis_velocity.header.frame_id = "base_link";
+  geometry_msgs::Twist odom_velocity;
+  geometry_msgs::Vector3Stamped global_velocity;
+  tf::TransformListener listener;
+  if (odomMode)
+  {
+    try
+    {
+      listener.waitForTransform("odom", "base_link", ros::Time(0), ros::Duration(3.0));
+      listener.transformVector("odom", ros::Time(0), chassis_velocity, "base_link", global_velocity);
+      odom_velocity.linear = global_velocity.vector;
+      odom_velocity.angular = cmd_vel.angular;
+    }
+    catch (tf::TransformException& ex)
+    {
+      ROS_INFO("%s", ex.what());
+    }
+    // 逆运动学解算，参考https://www.robotsfan.com/posts/b6e9d4e.html，odom_velocity.angular前系数由轮距和轮距决定
+    // 这里的速度是线速度
+    desired_left_front_velocity_ =
+        odom_velocity.linear.x - odom_velocity.linear.y - (rx + ry) * odom_velocity.angular.z;
+    desired_right_front_velocity_ =
+        odom_velocity.linear.x + odom_velocity.linear.y + (rx + ry) * odom_velocity.angular.z;
+    desired_left_back_velocity_ = odom_velocity.linear.x + odom_velocity.linear.y - (rx + ry) * odom_velocity.angular.z;
+    desired_right_back_velocity_ =
+        odom_velocity.linear.x - odom_velocity.linear.y + (rx + ry) * odom_velocity.angular.z;
+  }
+  else
+  {
+    desired_left_front_velocity_ = cmd_vel.linear.x - cmd_vel.linear.y - (rx + ry) * cmd_vel.angular.z;
+    desired_right_front_velocity_ = cmd_vel.linear.x + cmd_vel.linear.y + (rx + ry) * cmd_vel.angular.z;
+    desired_left_back_velocity_ = cmd_vel.linear.x + cmd_vel.linear.y - (rx + ry) * cmd_vel.angular.z;
+    desired_right_back_velocity_ = cmd_vel.linear.x - cmd_vel.linear.y + (rx + ry) * cmd_vel.angular.z;
+  }
+}
+```
+
+这里在回调函数中实现了这个功能。在参数中设定了一个bool类型的参数odomMode，可以根据其bool判断是否对速度进行转换
+
+### 8.其他特色功能
+
+1.实现了使用 teleop_twist_keyboard 键盘操控底盘（见launch文件）
+
+2.编写了一个random_move_node节点以随机发布/cmd_vel的速度指令，方便在编写控制器和PID调参时观察底盘的运动（解放双手！）
+
+以上两个功能可以根据执行不同的launch文件使用
+
+3.功率约束算法（todo）
 
-
-## 需求及评分细则
-
-**总分: 150**
-
-### 必做
-
-**总分: 35**
-如果没有完成必做需求，没有资格参加答辩。
-
-#### 1. 运行 [rm_description](https://github.com/YoujianWu/rm_description_for_task.git) 的英雄机器人模型 （已完成）
-
-**分数: 5**
-
-![task1](./doc/task1.png)
-
-
-
-参考资料：
-
-- [rm_description](https://github.com/YoujianWu/rm_description_for_task.git)
-
-#### 2. 学习理解并运行 [simple_chassis_controller](https://github.com/YoujianWu/simple_chassis_controller) （已完成）
-
-**分数: 10**
-
-要求：
-
-1. 全程使用 CLion 进行编译和 DeBug （可在群里寻求帮助）
-2. 如需使用catkin命令行工具，使用 `catkin-tool` 而不是 `catkin_make` (可在群里寻求帮助)
-3. 理解 `SimpleChassisController` 的类成员意义
-4. 理解控制器怎么被加载进模拟器和实际机器人中 (pluginlib)
-
-参考资料：
-
-- [CLion ROS setup tutorial](https://www.jetbrains.com/help/clion/ros-setup-tutorial.html)
-- [CLion Attach to process](https://www.jetbrains.com/help/clion/attaching-to-local-process.html)
-	调试simple_chassis_controller时, 应该 attach 到 `gzsever`
-- [simple_chassis_controller]
-- [ros_control: A generic and simple control framework for ROS](http://www.theoj.org/joss-papers/joss.00456/10.21105.joss.00456.pdf)
-- [ros_control: wiki](https://github.com/ros-controls/ros_control/wiki)
-- [Gazbeo: Tutorial: ROS Control](http://gazebosim.org/tutorials/?tut=ros_control)
-- [pluginlib](http://wiki.ros.org/pluginlib)
-
-#### 3. 谈谈你对 ros_control 的理解 （已完成）
-
-**分数: 20**
-
-参考资料：
-
-- [ros_control: A generic and simple control framework for ROS](http://www.theoj.org/joss-papers/joss.00456/10.21105.joss.00456.pdf)
-- [ros_control: wiki](https://github.com/ros-controls/ros_control/wiki)
-
-### 选做
-
-**总分: 115** 尽量完成更多项
-
-#### 1. 创建新的 ros_package （已完成）
-
-**分数: 10**
-
-要求：
-
-1. 以 rm_template 为模版 创建新仓库, 名为 hero_chassis_controller
-2. 正确填写 **CMakeList.txt**, **package.xml**, **README.md**, 在完成后面的需求时记更新
-
-参考资料：
-
-- [rm_template](https://github.com/gdut-dynamic-x/rm_template)
-- [catkin/CMakeLists.txt](http://wiki.ros.org/catkin/CMakeLists.txt)
-- [package.xml](http://wiki.ros.org/catkin/package.xml)
-
-#### 2. 完善的版本管理 （已完成，详见github仓库commits，待补充材料）
-
-**分数： 10**
-
-要求：
-
-1. 合理的commit
-2. 清晰的commit消息
-3. 有和合并冲突的处理
-4. 分工明确（组内贡献度将参考版本管理）
-
-#### 3. 正确的代码规范 （已完成，待补充材料）
-
-**分数： 10**
-
-要求：
-
-1. 使用 ROS C++ Style Guide 或者 Google C++ Style.
-2. 将本项目的 .clang-format 与 .clang-tidy
-	文件添加到你的项目中，并使用 [Save Actions](https://plugins.jetbrains.com/plugin/7642-save-actions) 来优化代码格式
-
-参考资料：
-
-- [ROS C++ Style Guide](http://wiki.ros.org/CppStyleGuide)
-- [Google C++ Style](https://google.github.io/styleguide/cppguide.html)
-
-#### 4. 使用 PID 控制轮子的速度（已完成，详见控制器源码，待补充）
-
-**分数： 20**
-
-要求：
-
-1. 一个PID对应控制一个轮子（共四个PID）
-2. 使用 control_toolbox 的 PID 控制器
-3. 可在配置文件中设定 PID 的各个参数
-4. 会使用 plotjuggler 和 rqt 的 rqt_reconfigure 调整得到合适的PID参数
-5. 理解 `control_toolbox::Pid` 类 参考资料：
-
-- [control_toolbox](http://wiki.ros.org/control_toolbox)
-- [control_toolbox::Pid Class Reference](http://docs.ros.org/en/jade/api/control_toolbox/html/classcontrol__toolbox_1_1Pid.html)
-- [effort_controllers/joint_velocity_controller.cpp](https://github.com/ros-controls/ros_controllers/blob/noetic-devel/effort_controllers/src/joint_velocity_controller.cpp)
-	展示了如何用 `control_toolbox::Pid` 控制单个关节的速度
-- [plotjuggler](https://www.ros.org/news/2017/01/new-package-plotjuggler.html)
-- [rqt_reconfigure](http://wiki.ros.org/rqt_reconfigure)
-
-#### 5. 使用逆运动学计算各个轮子的期望速度（已完成）
-
-**分数： 20**
-
-要求：
-
-1. 底盘坐标系定义参照仿真中的 base_link
-2. 接收 "/cmd_vel" 上的 [geometry_msgs/Twist](http://docs.ros.org/en/jade/api/geometry_msgs/html/msg/Twist.html)
-	数据，将它视为底盘坐标系下的速度指令，计算各个轮子期望的转速
-3. 可在配置文件中设定 底盘的轴距 轮距
-
-参考资料：
-
-- [geometry_msgs/Twist](http://docs.ros.org/en/jade/api/geometry_msgs/html/msg/Twist.html)
-- [Mecanum wheel](https://en.wikipedia.org/wiki/Mecanum_wheel)
-- [Kinematic Model of a Four Mecanum Wheeled Mobile Robot](https://research.ijcaonline.org/volume113/number3/pxc3901586.pdf)
-	这篇论文真真真水...
-
-#### 6. 使用正运动学实现里程计 （已完成）
-
-**分数： 15**
-
-要求：
-
-1. 根据轮子的实际速度计算底盘的速度，并进行叠加实现里程计
-2. 将数据发以 [nav_msgs/Odometry](http://docs.ros.org/en/noetic/api/nav_msgs/html/msg/Odometry.html) 发布到 topic "/odom" 上
-3. 将数据处理为坐标变换关系： **"odom"** 到 **"base_link"**
-
-参考资料：
-
-- [nav_msgs/Odometry](http://docs.ros.org/en/noetic/api/nav_msgs/html/msg/Odometry.html)
-- [navigationTutorialsRobotSetupOdom](http://wiki.ros.org/navigation/Tutorials/RobotSetup/Odom)
-- [Kinematic Model of a Four Mecanum Wheeled Mobile Robot](https://research.ijcaonline.org/volume113/number3/pxc3901586.pdf)
-
-#### 7. 使用tf计算实现世界坐标下的速度控制（待完成）
-
-**分数： 15**
-
-要求：
-
-1. 已实现 `5. 使用逆运动学计算各个轮子的期望速度` 和 `6. 使用正运动学实现里程计`
-2. 将 topic "/cmd_vel" 中的速度指令视为世界坐标系下(**"odom"** 或者 **"map"**)， 通过 `tf` 变换到 底盘坐标系后执行。
-3. 可在配置文件中设定 **“底盘坐标系速度模式”** ( 即`5. 使用逆运动学计算各个轮子的期望速度`) 和 **“全局坐标系速度模式”** 两个模式
-
-参考资料：
-
-- [tfOverviewUsing Published Transforms](http://wiki.ros.org/tf/Overview/Using%20Published%20Transforms
-	) 使用 `transformVector`
-
-#### 8. 其他特色功能 
-
-（部分完成，已实现:
-
-1. 使用 teleop_twist_keyboard 键盘操控底盘
-
-2. 编写了一个节点随机发布速度到/cmd_vel，供编写控制器时观察底盘运动
-
-	Todo: 功率约束算法）
-
-**分数： 15**
-
-要求：
-
-1. 自由发挥
-2. 如 使用 teleop_twist_keyboard 键盘操控底盘
-3. 如 可在配置文件设定底盘加速度。
-4. 如 可在配置文件设定底盘的运动功率，编写功率约束算法，并保证运动时不超出预期功率。
-
-参考资料：
-
-- [teleop_twist_keyboard](http://wiki.ros.org/teleop_twist_keyboard)
-- [power_limit](https://hz-rm-bbs-web-prod.oss-cn-hangzhou.aliyuncs.com/attachment/pre/v1/202309/15/000721u4euqvq7vsijvgpk.attach/%E5%B9%BF%E4%B8%9C%E5%B7%A5%E4%B8%9A%E5%A4%A7%E5%AD%A6%E4%B8%8B%E4%BE%9B%E5%BC%B9%E6%8A%80%E6%9C%AF%E6%96%B9%E6%A1%88.pdf)
-
-[rm_description]: https://github.com/gdut-dynamic-x/rm_description
-
-[simple_chassis_controller]: https://github.com/gdut-dynamic-x/simple_chassis_controller
-
-[catkin-tool]: https://catkin-tools.readthedocs.io/
