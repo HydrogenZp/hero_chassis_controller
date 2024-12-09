@@ -81,7 +81,7 @@ int main(int argc, char** argv)
     msg.linear.z = 0.0;
     msg.angular.z = current_angular_z;
 
-    // 发布速度消��
+    // 发布速度消息
     cmd_vel_pub.publish(msg);
 
     ros::spinOnce();
