@@ -2,7 +2,7 @@
 
 ## 完成情况
 
-所有必做与选做项目均已完成（特色功能已有三个）
+所有必做与选做项目均已完成（特色功能已有两个）
 
 ## 功能核心代码片段
 
@@ -153,11 +153,7 @@ void HeroChassisController::cmdVelCallback(const geometry_msgs::Twist& cmd_vel)
 
 ### 8.其他特色功能
 
-1.实现了使用 teleop_twist_keyboard 键盘操控底盘（见launch文件）
+1.编写了一个random_move_node节点以随机发布/cmd_vel的速度指令，方便在编写控制器和PID调参时观察底盘的运动（解放双手！）
 
-2.编写了一个random_move_node节点以随机发布/cmd_vel的速度指令，方便在编写控制器和PID调参时观察底盘的运动（解放双手！）
-
-以上两个功能可以根据执行不同的launch文件使用
-
-3.功率实时显示功能，可在plotjuggler中订阅/power_topic，显示底盘的输出功率曲线
+2.功率实时显示功能，可在plotjuggler中订阅/power_topic，显示底盘的输出功率曲线
 
