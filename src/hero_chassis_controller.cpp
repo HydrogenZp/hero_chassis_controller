@@ -5,6 +5,8 @@
 #include <geometry_msgs/Quaternion.h>
 #include <tf/transform_broadcaster.h>
 #include <tf/tf.h>
+#include <std_msgs/Float64.h>
+#include <cmath>
 
 namespace hero_chassis_controller
 {
@@ -103,6 +105,7 @@ bool HeroChassisController::init(hardware_interface::EffortJointInterface* effor
   cmd_vel_subscriber_ = root_nh.subscribe("cmd_vel", 1, &HeroChassisController::cmdVelCallback, this);
 
   real_speed_publisher_ = root_nh.advertise<nav_msgs::Odometry>("/odom", 10);
+  power_publisher_ = root_nh.advertise<std_msgs::Float64>("power_topic", 1);
   odom_msg.header.frame_id = "odom";
   odom_msg.child_frame_id = "base_link";
   odom_msg.pose.pose.position.z = 0.0;
@@ -175,6 +178,19 @@ void HeroChassisController::computeWheelEfforts(const ros::Time& time, const ros
   right_front_joint_.setCommand(right_front_effort);
   left_back_joint_.setCommand(left_front_effort);
   right_back_joint_.setCommand(right_back_effort);
+
+  // 计算每个轮子的瞬时功率并累加
+  double left_front_power = std::abs(left_front_joint_.getCommand()) * std::abs(left_front_joint_.getVelocity());
+  double right_front_power = std::abs(right_front_effort) * wheel_radius * std::abs(right_front_joint_.getVelocity());
+  double left_back_power = std::abs(left_back_effort) * wheel_radius * std::abs(left_back_joint_.getVelocity());
+  double right_back_power = std::abs(right_back_effort) * wheel_radius * std::abs(right_back_joint_.getVelocity());
+
+  // 累加每个轮子的功率
+  double accumulated_power = left_front_power + right_front_power + left_back_power + right_back_power;
+
+  std_msgs::Float64 power_msg;
+  power_msg.data = accumulated_power;
+  power_publisher_.publish(power_msg);
 }
 
 void HeroChassisController::updateRobotVelocityAndPosition(const ros::Time& time, const ros::Duration& period)

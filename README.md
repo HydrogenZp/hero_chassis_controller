@@ -2,7 +2,7 @@
 
 ## 完成情况
 
-所有必做与选做项目均已完成（特色功能已有两个，后续根据时间预算考虑添加功率约束算法）
+所有必做与选做项目均已完成（特色功能已有三个）
 
 ## 功能核心代码片段
 
@@ -159,5 +159,5 @@ void HeroChassisController::cmdVelCallback(const geometry_msgs::Twist& cmd_vel)
 
 以上两个功能可以根据执行不同的launch文件使用
 
-3.功率约束算法（todo）
+3.功率实时显示功能，可在plotjuggler中订阅/power_topic，显示底盘的输出功率曲线
 

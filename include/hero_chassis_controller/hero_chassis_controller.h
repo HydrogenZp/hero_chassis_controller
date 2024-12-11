@@ -47,10 +47,10 @@ private:
   double desired_right_front_velocity_;
   double desired_left_back_velocity_;
   double desired_right_back_velocity_;
-
   double x, y, th;
 
   ros::Publisher real_speed_publisher_;
+  ros::Publisher power_publisher_;
   nav_msgs::Odometry odom_msg;
   bool odomMode;
 };
